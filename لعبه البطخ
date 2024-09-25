@@ -1,0 +1,146 @@
+
+#لعبه البطه
+import random
+import time
+
+class Card:
+     def __init__(self, suit, value):
+        self.suit = suit  # The suit of the card (e.g., Hearts, Diamonds)
+        self.value = value  # The value of the card (e.g., 2, 3, Jack)
+
+    def __repr__(self):
+        return f"{self.value} of {self.suit}"  # String representation of the card
+
+    def get_numeric_value(self):
+        if self.value in ["Jack", "Queen", "King"]:
+            return 10
+        elif self.value == "Ace":
+            return 1
+        elif self.value == "Joker":
+            return -1  # Joker value handling (optional)
+        else:
+            return int(self.value)
+
+class Deck:
+    suits = ["Hearts", "Diamonds", "Clubs", "Spades"]  # Possible suits
+    values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace"]  # Possible values
+    
+    def __init__(self, include_joker=True):
+        
+        self.cards = [Card(suit, value) for suit in self.suits for value in self.values]
+        if include_joker:
+            self.cards.extend([Card("Joker", "Joker") for _ in range(2)])  # Add Joker cards
+        random.shuffle(self.cards)
+
+    def draw_card(self):
+        return self.cards.pop()  # Draw a card from the deck
+
+class Player:
+    def __init__(self, name):
+        self.name = name  # Player's name
+        self.hand = []  # Cards in player's hand
+        self.collected_cards = []  # Cards collected by the player
+        self.points = 0  # Player's total points
+        self.used_special_ability = False  # Track if special ability has been used
+
+    def draw(self, deck, num=1):
+        for _ in range(num):
+            self.hand.append(deck.draw_card())  # Draw cards from the deck
+
+    def play_card(self, index):
+        return self.hand.pop(index)  # Play a card from hand
+
+    def collect_cards(self, cards):
+        self.collected_cards.extend(cards)  # Collect cards from the table
+        if len(cards) > 1:
+            print(f"{self.name} performed a Basra!")  # Notify Basra action
+            self.points += 10  # Award points for Basra
+
+    def show_hand(self):
+        return [str(card) for card in self.hand]  # Show cards in hand
+
+    def calculate_points(self):
+        for card in self.collected_cards:
+            # Calculate points based on collected cards
+            if card.value == "Ace":
+                self.points += 1
+            elif card.value == "Jack":
+                self.points += 1
+            elif card.value == "7":
+                self.points += 2
+            elif card.value == "10" and card.suit == "Diamonds":
+                self.points += 3
+            elif card.value == "3" and card.suit == "Hearts":
+                self.points -= 2
+            elif card.value == "King":
+                self.points *= 2
+        self.points += len(self.collected_cards)  # Additional points for each collected card
+        return self.points
+
+class AIPlayer(Player):
+    def choose_card(self, table):
+        return random.randint(0, len(self.hand) - 1)  # AI randomly chooses a card
+
+class BasraGame:
+    def __init__(self, player1_name, player2_name, rounds=3, difficulty=1, include_teams=False, use_ai=False):
+        self.deck = Deck()  # Create a new deck
+        self.player1 = Player(player1_name)  # Initialize player 1
+        self.player2 = Player(player2_name) if not use_ai else AIPlayer(player2_name)  # Initialize player 2 or AI
+        self.table = []  # Cards on the table
+        self.current_player = self.player1  # Start with player 1
+        self.rounds = rounds  # Total rounds to play
+
+    def deal_cards(self):
+        self.player1.draw(self.deck, 4)  # Deal cards to player 1
+        self.player2.draw(self.deck, 4)  # Deal cards to player 2
+        self.table.extend([self.deck.draw_card() for _ in range(4)])  # Draw cards for the table
+        print(f"Cards on the table: {[str(card) for card in self.table]}")
+
+    def switch_turns(self):
+        self.current_player = self.player1 if self.current_player == self.player2 else self.player2  # Switch player turns
+
+    def play_round(self):
+        for _ in range(4):  # Each player plays 4 times
+            print(f"\n{self.current_player.name}'s hand: {self.current_player.show_hand()}")
+            print(f"Table: {[str(card) for card in self.table]}")
+
+            if isinstance(self.current_player, AIPlayer):
+                card_index = self.current_player.choose_card(self.table)  # AI chooses card
+            else:
+                while True:
+                    try:
+                        card_index = int(input(f"{self.current_player.name}, choose a card (0-{len(self.current_player.hand) - 1}): "))
+                        if 0 <= card_index < len(self.current_player.hand):
+                            break  # Valid input
+                        else:
+                            print("Invalid index, please try again.")
+                    except ValueError:
+                        print("Invalid input. Please enter a valid number.")
+
+            played_card = self.current_player.play_card(card_index)  # Player plays a card
+            print(f"{self.current_player.name} played {played_card}")
+
+            matching_cards = [card for card in self.table if card.get_numeric_value() == played_card.get_numeric_value()]
+            if matching_cards:
+                self.current_player.collect_cards([played_card] + matching_cards)  # Collect matching cards
+                self.table = [card for card in self.table if card not in matching_cards]  # Update table
+            else:
+                self.table.append(played_card)  # Add played card to table
+
+            self.switch_turns()  # Switch to the next player
+
+    def start_game(self):
+        for round_number in range(1, self.rounds + 1):
+            print(f"\n--- Round {round_number} ---")
+            self.deal_cards()  # Deal cards for the round			
+            self.play_round()  # Play the round
+            # Calculate points after the round
+            print(f"{self.player1.name} has {self.player1.calculate_points()} points.")
+            print(f"{self.player2.name} has {self.player2.calculate_points()} points.")
+            self.switch_turns()  # Switch players for the next round
+
+
+game = BasraGame("Player 1", "AI Opponent", rounds=3, difficulty=2, use_ai=True)
+game.start_game()
+```
+
